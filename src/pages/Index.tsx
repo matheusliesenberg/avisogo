@@ -39,6 +39,24 @@ const INITIAL_TASKS: Task[] = [
   },
 ];
 
+const INITIAL_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: "a1",
+    title: "Parada programada - Linha 2",
+    message: "A linha 2 ficará parada para manutenção no sábado, dia 15/03. Todos os operadores devem redirecionar suas atividades para a linha 3.",
+    author: "Ana Souza",
+    createdAt: new Date().toLocaleDateString("pt-BR"),
+    priority: "urgent",
+  },
+  {
+    id: "a2",
+    title: "Novo EPI disponível",
+    message: "Os novos óculos de proteção já estão disponíveis no almoxarifado. Favor trocar o antigo até sexta-feira.",
+    author: "Maria Oliveira",
+    createdAt: new Date().toLocaleDateString("pt-BR"),
+    priority: "normal",
+  },
+];
 const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "A Fazer",
   in_progress: "Em Andamento",
