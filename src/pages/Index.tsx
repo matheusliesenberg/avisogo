@@ -220,6 +220,7 @@ const Index = () => {
         <CreateTaskModal
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateTask}
+          users={MOCK_USERS}
         />
       )}
 
