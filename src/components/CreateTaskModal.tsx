@@ -7,13 +7,14 @@ interface CreateTaskModalProps {
   users: { id: string; name: string; role: string }[];
 }
 
-export function CreateTaskModal({ onClose, onCreate }: CreateTaskModalProps) {
+export function CreateTaskModal({ onClose, onCreate, users }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [assignee, setAssignee] = useState("");
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    onCreate(title.trim(), description.trim());
+    onCreate(title.trim(), description.trim(), assignee || "Você");
   };
 
   return (
