@@ -3,16 +3,18 @@ import { X } from "lucide-react";
 
 interface CreateTaskModalProps {
   onClose: () => void;
-  onCreate: (title: string, description: string) => void;
+  onCreate: (title: string, description: string, assignee: string) => void;
+  users: { id: string; name: string; role: string }[];
 }
 
-export function CreateTaskModal({ onClose, onCreate }: CreateTaskModalProps) {
+export function CreateTaskModal({ onClose, onCreate, users }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [assignee, setAssignee] = useState("");
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    onCreate(title.trim(), description.trim());
+    onCreate(title.trim(), description.trim(), assignee || "Você");
   };
 
   return (
@@ -39,6 +41,24 @@ export function CreateTaskModal({ onClose, onCreate }: CreateTaskModalProps) {
               placeholder="Ex: Verificar equipamento"
               className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-bold text-foreground">
+              Responsável
+            </label>
+            <select
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Eu mesmo</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.name}>
+                  {u.name} — {u.role}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">

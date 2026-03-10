@@ -87,13 +87,13 @@ const Index = () => {
     setAnnouncements((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const handleCreateTask = (title: string, description: string) => {
+  const handleCreateTask = (title: string, description: string, assignee: string) => {
     const newTask: Task = {
       id: Date.now().toString(),
       title,
       description,
       status: "todo",
-      assignee: "Você",
+      assignee,
       createdAt: new Date().toLocaleDateString("pt-BR"),
     };
     setTasks((prev) => [newTask, ...prev]);
@@ -220,6 +220,7 @@ const Index = () => {
         <CreateTaskModal
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateTask}
+          users={MOCK_USERS}
         />
       )}
 
