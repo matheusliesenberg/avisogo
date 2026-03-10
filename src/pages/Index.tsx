@@ -1,15 +1,30 @@
-import { useState } from "react";
-import { Plus, User, ClipboardList } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus, User, ClipboardList, LogOut } from "lucide-react";
 import { TaskCard, type Task, type TaskStatus } from "@/components/TaskCard";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { HandoverModal } from "@/components/HandoverModal";
 import { BulletinBoard, type Announcement } from "@/components/BulletinBoard";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-const MOCK_USERS = [
-  { id: "1", name: "Carlos Silva", role: "Operador" },
-  { id: "2", name: "Ana Souza", role: "Supervisora" },
-  { id: "3", name: "João Santos", role: "Técnico" },
-  { id: "4", name: "Maria Oliveira", role: "Coordenadora" },
+const INITIAL_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: "a1",
+    title: "Parada programada - Linha 2",
+    message: "A linha 2 ficará parada para manutenção no sábado, dia 15/03. Todos os operadores devem redirecionar suas atividades para a linha 3.",
+    author: "Ana Souza",
+    createdAt: new Date().toLocaleDateString("pt-BR"),
+    priority: "urgent",
+  },
+  {
+    id: "a2",
+    title: "Novo EPI disponível",
+    message: "Os novos óculos de proteção já estão disponíveis no almoxarifado. Favor trocar o antigo até sexta-feira.",
+    author: "Maria Oliveira",
+    createdAt: new Date().toLocaleDateString("pt-BR"),
+    priority: "normal",
+  },
 ];
 
 const INITIAL_TASKS: Task[] = [
@@ -39,24 +54,6 @@ const INITIAL_TASKS: Task[] = [
   },
 ];
 
-const INITIAL_ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: "a1",
-    title: "Parada programada - Linha 2",
-    message: "A linha 2 ficará parada para manutenção no sábado, dia 15/03. Todos os operadores devem redirecionar suas atividades para a linha 3.",
-    author: "Ana Souza",
-    createdAt: new Date().toLocaleDateString("pt-BR"),
-    priority: "urgent",
-  },
-  {
-    id: "a2",
-    title: "Novo EPI disponível",
-    message: "Os novos óculos de proteção já estão disponíveis no almoxarifado. Favor trocar o antigo até sexta-feira.",
-    author: "Maria Oliveira",
-    createdAt: new Date().toLocaleDateString("pt-BR"),
-    priority: "normal",
-  },
-];
 const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "A Fazer",
   in_progress: "Em Andamento",
@@ -64,19 +61,41 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { profile, isAdmin, signOut } = useAuth();
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [handoverTask, setHandoverTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<TaskStatus | "all">("all");
-  const isSupervisor = true; // TODO: replace with real role check
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; role: string }[]>([]);
+
+  const isSupervisor = isAdmin || profile?.cargo === "Supervisor";
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, cargo, cargo_custom");
+      if (data) {
+        setAllUsers(
+          data.map((u) => ({
+            id: u.user_id,
+            name: u.display_name || "Sem nome",
+            role: u.cargo_custom || u.cargo || "",
+          }))
+        );
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleAddAnnouncement = (title: string, message: string, priority: "normal" | "urgent") => {
     const newAnnouncement: Announcement = {
       id: Date.now().toString(),
       title,
       message,
-      author: "Carlos Silva",
+      author: profile?.display_name || "Usuário",
       createdAt: new Date().toLocaleDateString("pt-BR"),
       priority,
     };
@@ -131,6 +150,15 @@ const Index = () => {
     (a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status)
   );
 
+  const initials = profile?.display_name
+    ? profile.display_name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "?";
+
   return (
     <div className="min-h-screen bg-muted">
       {/* Header */}
@@ -143,19 +171,41 @@ const Index = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2">
-              <User className="h-5 w-5 text-secondary-foreground" />
+            <button
+              onClick={() => navigate("/profile")}
+              className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 hover:opacity-90 transition-opacity"
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="Avatar"
+                  className="h-6 w-6 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-6 w-6 rounded-full bg-primary-foreground/20 flex items-center justify-center">
+                  <span className="text-xs font-bold text-secondary-foreground">
+                    {initials}
+                  </span>
+                </div>
+              )}
               <span className="text-sm font-bold text-secondary-foreground hidden sm:inline">
-                Carlos Silva
+                {profile?.display_name || "Perfil"}
               </span>
-            </div>
+            </button>
+            <button
+              onClick={signOut}
+              className="rounded-lg p-2 text-primary-foreground hover:bg-secondary/30 transition-colors"
+              title="Sair"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </header>
 
       {/* Main content */}
       <main className="container py-6 space-y-6">
-        {/* Bulletin Board */}
+        {/* Bulletin Board - read only for non-supervisors */}
         <BulletinBoard
           announcements={announcements}
           onAdd={handleAddAnnouncement}
@@ -163,8 +213,8 @@ const Index = () => {
           isSupervisor={isSupervisor}
         />
 
-        {/* Separator */}
         <hr className="border-border" />
+
         {/* Create button */}
         <button
           onClick={() => setShowCreateModal(true)}
@@ -220,14 +270,14 @@ const Index = () => {
         <CreateTaskModal
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateTask}
-          users={MOCK_USERS}
+          users={allUsers}
         />
       )}
 
       {handoverTask && (
         <HandoverModal
           task={handoverTask}
-          users={MOCK_USERS}
+          users={allUsers}
           onClose={() => setHandoverTask(null)}
           onConfirm={handleConfirmHandover}
         />
