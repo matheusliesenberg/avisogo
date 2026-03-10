@@ -72,6 +72,7 @@ export function CreateTaskModal({ onClose, onCreate, users }: CreateTaskModalPro
               rows={4}
               className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />
+          </div>
 
           <button
             onClick={handleSubmit}
