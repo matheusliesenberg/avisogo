@@ -65,9 +65,27 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 
 const Index = () => {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [handoverTask, setHandoverTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<TaskStatus | "all">("all");
+  const isSupervisor = true; // TODO: replace with real role check
+
+  const handleAddAnnouncement = (title: string, message: string, priority: "normal" | "urgent") => {
+    const newAnnouncement: Announcement = {
+      id: Date.now().toString(),
+      title,
+      message,
+      author: "Carlos Silva",
+      createdAt: new Date().toLocaleDateString("pt-BR"),
+      priority,
+    };
+    setAnnouncements((prev) => [newAnnouncement, ...prev]);
+  };
+
+  const handleDeleteAnnouncement = (id: string) => {
+    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+  };
 
   const handleCreateTask = (title: string, description: string) => {
     const newTask: Task = {
