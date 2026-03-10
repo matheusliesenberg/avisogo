@@ -3,7 +3,8 @@ import { X } from "lucide-react";
 
 interface CreateTaskModalProps {
   onClose: () => void;
-  onCreate: (title: string, description: string) => void;
+  onCreate: (title: string, description: string, assignee: string) => void;
+  users: { id: string; name: string; role: string }[];
 }
 
 export function CreateTaskModal({ onClose, onCreate }: CreateTaskModalProps) {
