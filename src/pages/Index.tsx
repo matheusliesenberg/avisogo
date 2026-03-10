@@ -3,6 +3,7 @@ import { Plus, User, ClipboardList } from "lucide-react";
 import { TaskCard, type Task, type TaskStatus } from "@/components/TaskCard";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { HandoverModal } from "@/components/HandoverModal";
+import { BulletinBoard, type Announcement } from "@/components/BulletinBoard";
 
 const MOCK_USERS = [
   { id: "1", name: "Carlos Silva", role: "Operador" },
