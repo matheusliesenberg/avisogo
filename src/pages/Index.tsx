@@ -3,6 +3,7 @@ import { Plus, User, ClipboardList } from "lucide-react";
 import { TaskCard, type Task, type TaskStatus } from "@/components/TaskCard";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { HandoverModal } from "@/components/HandoverModal";
+import { BulletinBoard, type Announcement } from "@/components/BulletinBoard";
 
 const MOCK_USERS = [
   { id: "1", name: "Carlos Silva", role: "Operador" },
@@ -38,6 +39,24 @@ const INITIAL_TASKS: Task[] = [
   },
 ];
 
+const INITIAL_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: "a1",
+    title: "Parada programada - Linha 2",
+    message: "A linha 2 ficará parada para manutenção no sábado, dia 15/03. Todos os operadores devem redirecionar suas atividades para a linha 3.",
+    author: "Ana Souza",
+    createdAt: new Date().toLocaleDateString("pt-BR"),
+    priority: "urgent",
+  },
+  {
+    id: "a2",
+    title: "Novo EPI disponível",
+    message: "Os novos óculos de proteção já estão disponíveis no almoxarifado. Favor trocar o antigo até sexta-feira.",
+    author: "Maria Oliveira",
+    createdAt: new Date().toLocaleDateString("pt-BR"),
+    priority: "normal",
+  },
+];
 const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "A Fazer",
   in_progress: "Em Andamento",
@@ -46,9 +65,27 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 
 const Index = () => {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [handoverTask, setHandoverTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<TaskStatus | "all">("all");
+  const isSupervisor = true; // TODO: replace with real role check
+
+  const handleAddAnnouncement = (title: string, message: string, priority: "normal" | "urgent") => {
+    const newAnnouncement: Announcement = {
+      id: Date.now().toString(),
+      title,
+      message,
+      author: "Carlos Silva",
+      createdAt: new Date().toLocaleDateString("pt-BR"),
+      priority,
+    };
+    setAnnouncements((prev) => [newAnnouncement, ...prev]);
+  };
+
+  const handleDeleteAnnouncement = (id: string) => {
+    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+  };
 
   const handleCreateTask = (title: string, description: string) => {
     const newTask: Task = {
@@ -117,7 +154,17 @@ const Index = () => {
       </header>
 
       {/* Main content */}
-      <main className="container py-6 space-y-5">
+      <main className="container py-6 space-y-6">
+        {/* Bulletin Board */}
+        <BulletinBoard
+          announcements={announcements}
+          onAdd={handleAddAnnouncement}
+          onDelete={handleDeleteAnnouncement}
+          isSupervisor={isSupervisor}
+        />
+
+        {/* Separator */}
+        <hr className="border-border" />
         {/* Create button */}
         <button
           onClick={() => setShowCreateModal(true)}
