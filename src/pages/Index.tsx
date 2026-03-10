@@ -154,7 +154,17 @@ const Index = () => {
       </header>
 
       {/* Main content */}
-      <main className="container py-6 space-y-5">
+      <main className="container py-6 space-y-6">
+        {/* Bulletin Board */}
+        <BulletinBoard
+          announcements={announcements}
+          onAdd={handleAddAnnouncement}
+          onDelete={handleDeleteAnnouncement}
+          isSupervisor={isSupervisor}
+        />
+
+        {/* Separator */}
+        <hr className="border-border" />
         {/* Create button */}
         <button
           onClick={() => setShowCreateModal(true)}
