@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
       },
       manifest: {
-        name: "Painel Digital - Comunicação Interna",
-        short_name: "Painel Digital",
+        name: "Aviso Go - Comunicação Interna",
+        short_name: "Aviso Go",
         description: "Sistema de comunicação interna e gestão de tarefas para colaboradores",
         theme_color: "#6366f1",
         background_color: "#ffffff",
