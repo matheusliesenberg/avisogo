@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, User, ClipboardList, LogOut } from "lucide-react";
+import { Plus, User, ClipboardList, LogOut, Shield } from "lucide-react";
 import { TaskCard, type Task, type TaskStatus } from "@/components/TaskCard";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { HandoverModal } from "@/components/HandoverModal";
@@ -171,6 +171,16 @@ const Index = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={() => navigate("/admin")}
+                className="flex items-center gap-2 rounded-lg bg-destructive px-3 py-2 hover:opacity-90 transition-opacity"
+                title="Painel Admin"
+              >
+                <Shield className="h-5 w-5 text-destructive-foreground" />
+                <span className="text-sm font-bold text-destructive-foreground hidden sm:inline">Admin</span>
+              </button>
+            )}
             <button
               onClick={() => navigate("/profile")}
               className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 hover:opacity-90 transition-opacity"
