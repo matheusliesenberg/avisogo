@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<TaskStatus, { label: string; borderClass: string; bg
 };
 
 const NEXT_STATUS: Partial<Record<TaskStatus, { status: TaskStatus; label: string }>> = {
-  todo: { status: "in_progress", label: "Iniciar Tarefa" },
+  todo: { status: "in_progress", label: "Iniciar a Tarefa" },
   in_progress: { status: "done", label: "Marcar como Concluído" },
 };
 
