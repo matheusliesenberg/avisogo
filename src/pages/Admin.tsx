@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Shield, ClipboardList } from "lucide-react";
+import { ArrowLeft, Users, Shield, ClipboardList, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface UserProfile {
   id: string;
@@ -16,9 +17,11 @@ interface UserProfile {
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, user } = useAuth();
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -26,17 +29,50 @@ export default function Admin() {
     }
   }, [loading, isAdmin, navigate]);
 
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setUsers(data || []);
+    setLoadingUsers(false);
+  };
+
   useEffect(() => {
-    const fetchUsers = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setUsers(data || []);
-      setLoadingUsers(false);
-    };
     if (isAdmin) fetchUsers();
   }, [isAdmin]);
+
+  const handleDelete = async (targetUserId: string, displayName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o colaborador "${displayName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    setDeletingId(targetUserId);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { user_id: targetUserId },
+      });
+
+      if (error || data?.error) {
+        toast({
+          title: "Erro ao excluir",
+          description: data?.error || error?.message || "Erro desconhecido",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Colaborador excluído com sucesso" });
+        setUsers((prev) => prev.filter((u) => u.user_id !== targetUserId));
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -119,6 +155,16 @@ export default function Admin() {
                     {u.cargo_custom || u.cargo || "Sem cargo"}
                   </p>
                 </div>
+                {u.user_id !== user?.id && (
+                  <button
+                    onClick={() => handleDelete(u.user_id, u.display_name)}
+                    disabled={deletingId === u.user_id}
+                    className="shrink-0 rounded-lg p-2 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                    title="Excluir colaborador"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                )}
               </div>
             ))
           )}
