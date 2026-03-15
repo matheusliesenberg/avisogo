@@ -171,6 +171,16 @@ const Index = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={() => navigate("/admin")}
+                className="flex items-center gap-2 rounded-lg bg-destructive px-3 py-2 hover:opacity-90 transition-opacity"
+                title="Painel Admin"
+              >
+                <Shield className="h-5 w-5 text-destructive-foreground" />
+                <span className="text-sm font-bold text-destructive-foreground hidden sm:inline">Admin</span>
+              </button>
+            )}
             <button
               onClick={() => navigate("/profile")}
               className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 hover:opacity-90 transition-opacity"
