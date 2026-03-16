@@ -61,7 +61,18 @@ export function TaskCard({ task, onStatusChange, onHandover, onDelete, canDelete
             <StatusIcon className="h-3.5 w-3.5" />
             {config.label}
           </span>
-          <span className="text-xs text-muted-foreground">{task.createdAt}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{task.createdAt}</span>
+            {canDelete && onDelete && (
+              <button
+                onClick={() => onDelete(task.id)}
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                title="Excluir tarefa"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Title & description */}
