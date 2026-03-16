@@ -35,6 +35,15 @@ export default function Admin() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredUsers = users.filter((u) => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    const cargo = (u.cargo_custom || u.cargo || "").toLowerCase();
+    const name = (u.display_name || "").toLowerCase();
+    return name.includes(q) || cargo.includes(q);
+  });
 
   useEffect(() => {
     if (!loading && !isAdmin) {
