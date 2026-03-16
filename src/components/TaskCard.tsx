@@ -15,6 +15,8 @@ interface TaskCardProps {
   task: Task;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onHandover: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
+  canDelete?: boolean;
 }
 
 const STATUS_CONFIG: Record<TaskStatus, { label: string; borderClass: string; bgClass: string; icon: typeof Clock }> = {
