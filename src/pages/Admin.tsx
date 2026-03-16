@@ -85,6 +85,46 @@ export default function Admin() {
     if (isAdmin) fetchUsers();
   }, [isAdmin]);
 
+  const isProtectedAdmin = (email: string) => email === "admin@gmail.com";
+
+  const handleStartEdit = (u: UserProfile) => {
+    setEditingUser(u);
+    setEditForm({
+      display_name: u.display_name || "",
+      cargo: u.cargo || "",
+      cargo_custom: u.cargo_custom || "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: editForm.display_name.trim(),
+          cargo: editForm.cargo,
+          cargo_custom: editForm.cargo_custom.trim() || null,
+        })
+        .eq("user_id", editingUser.user_id);
+      if (error) throw error;
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === editingUser.user_id
+            ? { ...u, display_name: editForm.display_name.trim(), cargo: editForm.cargo, cargo_custom: editForm.cargo_custom.trim() || null }
+            : u
+        )
+      );
+      toast({ title: `Perfil de "${editForm.display_name}" atualizado` });
+      setEditingUser(null);
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleToggleAdmin = async (targetUserId: string, displayName: string, currentlyAdmin: boolean) => {
     setTogglingId(targetUserId);
     try {
