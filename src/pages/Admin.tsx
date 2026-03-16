@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Shield, ClipboardList, Trash2, ShieldCheck, ShieldOff, Search } from "lucide-react";
+import { ArrowLeft, Users, Shield, ClipboardList, Trash2, ShieldCheck, ShieldOff, Search, Pencil, X, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,9 @@ export default function Admin() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState({ display_name: "", cargo: "", cargo_custom: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const filteredUsers = users.filter((u) => {
     const q = searchQuery.toLowerCase();
@@ -81,6 +84,46 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) fetchUsers();
   }, [isAdmin]);
+
+  const isProtectedAdmin = (email: string) => email === "admin@gmail.com";
+
+  const handleStartEdit = (u: UserProfile) => {
+    setEditingUser(u);
+    setEditForm({
+      display_name: u.display_name || "",
+      cargo: u.cargo || "",
+      cargo_custom: u.cargo_custom || "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: editForm.display_name.trim(),
+          cargo: editForm.cargo,
+          cargo_custom: editForm.cargo_custom.trim() || null,
+        })
+        .eq("user_id", editingUser.user_id);
+      if (error) throw error;
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === editingUser.user_id
+            ? { ...u, display_name: editForm.display_name.trim(), cargo: editForm.cargo, cargo_custom: editForm.cargo_custom.trim() || null }
+            : u
+        )
+      );
+      toast({ title: `Perfil de "${editForm.display_name}" atualizado` });
+      setEditingUser(null);
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const handleToggleAdmin = async (targetUserId: string, displayName: string, currentlyAdmin: boolean) => {
     setTogglingId(targetUserId);
@@ -258,74 +301,89 @@ export default function Admin() {
                 </div>
                 {u.user_id !== user?.id && (
                   <div className="flex items-center gap-1 shrink-0">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button
-                          disabled={togglingId === u.user_id}
-                          className={`rounded-lg p-2 transition-colors disabled:opacity-50 ${
-                            u.is_admin
-                              ? "text-amber-600 hover:bg-amber-100"
-                              : "text-primary hover:bg-primary/10"
-                          }`}
-                          title={u.is_admin ? "Rebaixar para usuário" : "Promover a admin"}
-                        >
-                          {u.is_admin ? (
-                            <ShieldOff className="h-5 w-5" />
-                          ) : (
-                            <ShieldCheck className="h-5 w-5" />
-                          )}
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {u.is_admin ? "Rebaixar usuário" : "Promover a administrador"}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {u.is_admin
-                              ? `Deseja remover os privilégios de administrador de "${u.display_name}"?`
-                              : `Deseja promover "${u.display_name}" a administrador? Ele terá acesso total ao painel.`}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleToggleAdmin(u.user_id, u.display_name, !!u.is_admin)}
-                          >
-                            Confirmar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {/* Edit button */}
+                    <button
+                      onClick={() => handleStartEdit(u)}
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                      title="Editar informações"
+                    >
+                      <Pencil className="h-5 w-5" />
+                    </button>
 
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button
-                          disabled={deletingId === u.user_id}
-                          className="rounded-lg p-2 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                          title="Excluir colaborador"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir colaborador</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir "{u.display_name}"? Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => handleDelete(u.user_id, u.display_name)}
+                    {/* Toggle admin - hidden for protected admin */}
+                    {!isProtectedAdmin(u.email) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            disabled={togglingId === u.user_id}
+                            className={`rounded-lg p-2 transition-colors disabled:opacity-50 ${
+                              u.is_admin
+                                ? "text-amber-600 hover:bg-amber-100"
+                                : "text-primary hover:bg-primary/10"
+                            }`}
+                            title={u.is_admin ? "Rebaixar para usuário" : "Promover a admin"}
                           >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            {u.is_admin ? (
+                              <ShieldOff className="h-5 w-5" />
+                            ) : (
+                              <ShieldCheck className="h-5 w-5" />
+                            )}
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {u.is_admin ? "Rebaixar usuário" : "Promover a administrador"}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {u.is_admin
+                                ? `Deseja remover os privilégios de administrador de "${u.display_name}"?`
+                                : `Deseja promover "${u.display_name}" a administrador? Ele terá acesso total ao painel.`}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleToggleAdmin(u.user_id, u.display_name, !!u.is_admin)}
+                            >
+                              Confirmar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+
+                    {/* Delete - hidden for protected admin */}
+                    {!isProtectedAdmin(u.email) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            disabled={deletingId === u.user_id}
+                            className="rounded-lg p-2 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                            title="Excluir colaborador"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir colaborador</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir "{u.display_name}"? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => handleDelete(u.user_id, u.display_name)}
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 )}
               </div>
@@ -333,6 +391,69 @@ export default function Admin() {
           )}
         </div>
       </main>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-foreground/40">
+          <div className="w-full max-w-lg bg-card rounded-t-2xl sm:rounded-2xl shadow-xl animate-in slide-in-from-bottom-4">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h2 className="font-heading font-bold text-lg text-foreground">
+                Editar Colaborador
+              </h2>
+              <button onClick={() => setEditingUser(null)} className="p-2 rounded-lg hover:bg-muted transition-colors">
+                <X className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="space-y-1">
+                <label className="block text-sm font-bold text-foreground">Nome</label>
+                <input
+                  type="text"
+                  value={editForm.display_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, display_name: e.target.value }))}
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-sm font-bold text-foreground">Cargo</label>
+                <select
+                  value={editForm.cargo}
+                  onChange={(e) => setEditForm((f) => ({ ...f, cargo: e.target.value, cargo_custom: e.target.value === "Outro" ? f.cargo_custom : "" }))}
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Selecione</option>
+                  <option value="Operador de Produção">Operador de Produção</option>
+                  <option value="Administração">Administração</option>
+                  <option value="Logística">Logística</option>
+                  <option value="Supervisor">Supervisor</option>
+                  <option value="Segurança">Segurança</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+              {editForm.cargo === "Outro" && (
+                <div className="space-y-1">
+                  <label className="block text-sm font-bold text-foreground">Cargo personalizado</label>
+                  <input
+                    type="text"
+                    value={editForm.cargo_custom}
+                    onChange={(e) => setEditForm((f) => ({ ...f, cargo_custom: e.target.value }))}
+                    placeholder="Digite o cargo"
+                    className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              )}
+              <button
+                onClick={handleSaveEdit}
+                disabled={savingEdit || !editForm.display_name.trim()}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-4 text-base font-heading font-bold text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                <Save className="h-5 w-5" />
+                {savingEdit ? "Salvando..." : "Salvar Alterações"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle, Clock, CircleDot, UserPlus } from "lucide-react";
+import { ArrowRight, CheckCircle, Clock, CircleDot, UserPlus, Trash2 } from "lucide-react";
 
 export type TaskStatus = "todo" | "in_progress" | "done";
 
@@ -15,6 +15,8 @@ interface TaskCardProps {
   task: Task;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onHandover: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
+  canDelete?: boolean;
 }
 
 const STATUS_CONFIG: Record<TaskStatus, { label: string; borderClass: string; bgClass: string; icon: typeof Clock }> = {
@@ -43,7 +45,7 @@ const NEXT_STATUS: Partial<Record<TaskStatus, { status: TaskStatus; label: strin
   in_progress: { status: "done", label: "Marcar como Concluído" },
 };
 
-export function TaskCard({ task, onStatusChange, onHandover }: TaskCardProps) {
+export function TaskCard({ task, onStatusChange, onHandover, onDelete, canDelete }: TaskCardProps) {
   const config = STATUS_CONFIG[task.status];
   const next = NEXT_STATUS[task.status];
   const StatusIcon = config.icon;
@@ -59,7 +61,18 @@ export function TaskCard({ task, onStatusChange, onHandover }: TaskCardProps) {
             <StatusIcon className="h-3.5 w-3.5" />
             {config.label}
           </span>
-          <span className="text-xs text-muted-foreground">{task.createdAt}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{task.createdAt}</span>
+            {canDelete && onDelete && (
+              <button
+                onClick={() => onDelete(task.id)}
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                title="Excluir tarefa"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Title & description */}

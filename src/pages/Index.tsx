@@ -125,6 +125,10 @@ const Index = () => {
     );
   };
 
+  const handleDeleteTask = (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
   const handleHandover = (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
     if (task) setHandoverTask(task);
@@ -269,6 +273,8 @@ const Index = () => {
                 task={task}
                 onStatusChange={handleStatusChange}
                 onHandover={handleHandover}
+                onDelete={handleDeleteTask}
+                canDelete={isSupervisor}
               />
             ))
           )}
