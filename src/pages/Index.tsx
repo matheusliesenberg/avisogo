@@ -273,6 +273,8 @@ const Index = () => {
                 task={task}
                 onStatusChange={handleStatusChange}
                 onHandover={handleHandover}
+                onDelete={handleDeleteTask}
+                canDelete={isSupervisor}
               />
             ))
           )}
