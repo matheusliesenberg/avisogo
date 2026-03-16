@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Shield, ClipboardList, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Shield, ClipboardList, Trash2, ShieldCheck, ShieldOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface UserProfile {
   id: string;
@@ -13,6 +24,7 @@ interface UserProfile {
   cargo: string;
   cargo_custom: string | null;
   created_at: string;
+  is_admin?: boolean;
 }
 
 export default function Admin() {
@@ -22,6 +34,7 @@ export default function Admin() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -30,11 +43,29 @@ export default function Admin() {
   }, [loading, isAdmin, navigate]);
 
   const fetchUsers = async () => {
-    const { data } = await supabase
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("*")
       .order("created_at", { ascending: false });
-    setUsers(data || []);
+
+    if (!profiles) {
+      setUsers([]);
+      setLoadingUsers(false);
+      return;
+    }
+
+    // Check admin status for each user
+    const usersWithRoles = await Promise.all(
+      profiles.map(async (p) => {
+        const { data: isAdminUser } = await supabase.rpc("has_role", {
+          _user_id: p.user_id,
+          _role: "admin",
+        });
+        return { ...p, is_admin: isAdminUser === true };
+      })
+    );
+
+    setUsers(usersWithRoles);
     setLoadingUsers(false);
   };
 
@@ -42,11 +73,53 @@ export default function Admin() {
     if (isAdmin) fetchUsers();
   }, [isAdmin]);
 
-  const handleDelete = async (targetUserId: string, displayName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o colaborador "${displayName}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
+  const handleToggleAdmin = async (targetUserId: string, displayName: string, currentlyAdmin: boolean) => {
+    setTogglingId(targetUserId);
+    try {
+      if (currentlyAdmin) {
+        // Demote: delete admin role
+        const { error } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", targetUserId)
+          .eq("role", "admin");
 
+        if (error) throw error;
+
+        // Ensure they have 'user' role
+        await supabase.from("user_roles").upsert(
+          { user_id: targetUserId, role: "user" as const },
+          { onConflict: "user_id,role" }
+        );
+
+        toast({ title: `"${displayName}" rebaixado para usuário comum` });
+      } else {
+        // Promote: add admin role
+        await supabase.from("user_roles").insert({
+          user_id: targetUserId,
+          role: "admin" as const,
+        });
+
+        toast({ title: `"${displayName}" promovido a administrador` });
+      }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === targetUserId ? { ...u, is_admin: !currentlyAdmin } : u
+        )
+      );
+    } catch (err: any) {
+      toast({
+        title: "Erro ao alterar permissão",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleDelete = async (targetUserId: string, displayName: string) => {
     setDeletingId(targetUserId);
     try {
       const { data, error } = await supabase.functions.invoke("delete-user", {
@@ -145,9 +218,17 @@ export default function Admin() {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-foreground truncate">
-                    {u.display_name || "Sem nome"}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-foreground truncate">
+                      {u.display_name || "Sem nome"}
+                    </p>
+                    {u.is_admin && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+                        <Shield className="h-3 w-3" />
+                        Admin
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground truncate">
                     {u.email}
                   </p>
@@ -156,14 +237,76 @@ export default function Admin() {
                   </p>
                 </div>
                 {u.user_id !== user?.id && (
-                  <button
-                    onClick={() => handleDelete(u.user_id, u.display_name)}
-                    disabled={deletingId === u.user_id}
-                    className="shrink-0 rounded-lg p-2 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                    title="Excluir colaborador"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          disabled={togglingId === u.user_id}
+                          className={`rounded-lg p-2 transition-colors disabled:opacity-50 ${
+                            u.is_admin
+                              ? "text-amber-600 hover:bg-amber-100"
+                              : "text-primary hover:bg-primary/10"
+                          }`}
+                          title={u.is_admin ? "Rebaixar para usuário" : "Promover a admin"}
+                        >
+                          {u.is_admin ? (
+                            <ShieldOff className="h-5 w-5" />
+                          ) : (
+                            <ShieldCheck className="h-5 w-5" />
+                          )}
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {u.is_admin ? "Rebaixar usuário" : "Promover a administrador"}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {u.is_admin
+                              ? `Deseja remover os privilégios de administrador de "${u.display_name}"?`
+                              : `Deseja promover "${u.display_name}" a administrador? Ele terá acesso total ao painel.`}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleToggleAdmin(u.user_id, u.display_name, !!u.is_admin)}
+                          >
+                            Confirmar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          disabled={deletingId === u.user_id}
+                          className="rounded-lg p-2 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                          title="Excluir colaborador"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir colaborador</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir "{u.display_name}"? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => handleDelete(u.user_id, u.display_name)}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 )}
               </div>
             ))
