@@ -36,6 +36,9 @@ export default function Admin() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState({ display_name: "", cargo: "", cargo_custom: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const filteredUsers = users.filter((u) => {
     const q = searchQuery.toLowerCase();
