@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle, Clock, CircleDot, UserPlus } from "lucide-react";
+import { ArrowRight, CheckCircle, Clock, CircleDot, UserPlus, Trash2 } from "lucide-react";
 
 export type TaskStatus = "todo" | "in_progress" | "done";
 
