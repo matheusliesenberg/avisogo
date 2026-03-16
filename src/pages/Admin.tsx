@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Shield, ClipboardList, Trash2, ShieldCheck, ShieldOff } from "lucide-react";
+import { ArrowLeft, Users, Shield, ClipboardList, Trash2, ShieldCheck, ShieldOff, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,15 @@ export default function Admin() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredUsers = users.filter((u) => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    const cargo = (u.cargo_custom || u.cargo || "").toLowerCase();
+    const name = (u.display_name || "").toLowerCase();
+    return name.includes(q) || cargo.includes(q);
+  });
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -196,18 +205,29 @@ export default function Admin() {
             Colaboradores Cadastrados
           </h2>
 
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Buscar por nome ou cargo..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-border bg-card pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+
           {loadingUsers ? (
             <div className="bg-card rounded-xl border border-border p-6 text-center">
               <p className="text-muted-foreground">Carregando...</p>
             </div>
-          ) : users.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="bg-card rounded-xl border border-border p-6 text-center">
               <p className="text-muted-foreground">
-                Nenhum colaborador cadastrado.
+                {searchQuery ? "Nenhum colaborador encontrado." : "Nenhum colaborador cadastrado."}
               </p>
             </div>
           ) : (
-            users.map((u) => (
+            filteredUsers.map((u) => (
               <div
                 key={u.id}
                 className="bg-card rounded-xl border border-border p-4 flex items-center gap-4"
