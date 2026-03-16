@@ -45,7 +45,7 @@ const NEXT_STATUS: Partial<Record<TaskStatus, { status: TaskStatus; label: strin
   in_progress: { status: "done", label: "Marcar como Concluído" },
 };
 
-export function TaskCard({ task, onStatusChange, onHandover }: TaskCardProps) {
+export function TaskCard({ task, onStatusChange, onHandover, onDelete, canDelete }: TaskCardProps) {
   const config = STATUS_CONFIG[task.status];
   const next = NEXT_STATUS[task.status];
   const StatusIcon = config.icon;
