@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, User, ClipboardList, LogOut, Shield } from "lucide-react";
+import { Plus, ClipboardList, LogOut, Shield } from "lucide-react";
 import { TaskCard, type Task, type TaskStatus } from "@/components/TaskCard";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { HandoverModal } from "@/components/HandoverModal";
@@ -27,33 +27,6 @@ const INITIAL_ANNOUNCEMENTS: Announcement[] = [
   },
 ];
 
-const INITIAL_TASKS: Task[] = [
-  {
-    id: "1",
-    title: "Verificar estoque de peças",
-    description: "Conferir quantidade de parafusos M8 no almoxarifado central.",
-    status: "todo",
-    assignee: "Carlos Silva",
-    createdAt: new Date().toLocaleDateString("pt-BR"),
-  },
-  {
-    id: "2",
-    title: "Relatório de produção semanal",
-    description: "Preencher o relatório da linha 3 com os dados de segunda a sexta.",
-    status: "in_progress",
-    assignee: "Ana Souza",
-    createdAt: new Date().toLocaleDateString("pt-BR"),
-  },
-  {
-    id: "3",
-    title: "Manutenção preventiva - Máquina 7",
-    description: "Lubrificação e troca de filtros conforme checklist padrão.",
-    status: "done",
-    assignee: "João Santos",
-    createdAt: new Date().toLocaleDateString("pt-BR"),
-  },
-];
-
 const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "A Fazer",
   in_progress: "Em Andamento",
@@ -63,7 +36,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 const Index = () => {
   const navigate = useNavigate();
   const { profile, isAdmin, signOut } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [handoverTask, setHandoverTask] = useState<Task | null>(null);
@@ -139,7 +112,7 @@ const Index = () => {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === handoverTask.id
-          ? { ...t, status: "done" as TaskStatus, assignee: recipientName }
+          ? { ...t, assignee: recipientName, status: "todo" as TaskStatus }
           : t
       )
     );
@@ -162,6 +135,8 @@ const Index = () => {
         .slice(0, 2)
         .toUpperCase()
     : "?";
+
+  const currentUserName = profile?.display_name || "";
 
   return (
     <div className="min-h-screen bg-muted">
@@ -219,7 +194,7 @@ const Index = () => {
 
       {/* Main content */}
       <main className="container py-6 space-y-6">
-        {/* Bulletin Board - read only for non-supervisors */}
+        {/* Bulletin Board */}
         <BulletinBoard
           announcements={announcements}
           onAdd={handleAddAnnouncement}
@@ -229,14 +204,16 @@ const Index = () => {
 
         <hr className="border-border" />
 
-        {/* Create button */}
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="w-full flex items-center justify-center gap-3 rounded-lg bg-primary py-4 px-6 text-lg font-heading font-bold text-primary-foreground shadow-lg hover:opacity-90 transition-opacity active:scale-[0.98]"
-        >
-          <Plus className="h-6 w-6" />
-          Criar Nova Tarefa
-        </button>
+        {/* Create button - only for admins */}
+        {isAdmin && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full flex items-center justify-center gap-3 rounded-lg bg-primary py-4 px-6 text-lg font-heading font-bold text-primary-foreground shadow-lg hover:opacity-90 transition-opacity active:scale-[0.98]"
+          >
+            <Plus className="h-6 w-6" />
+            Criar Nova Tarefa
+          </button>
+        )}
 
         {/* Filter */}
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -274,7 +251,8 @@ const Index = () => {
                 onStatusChange={handleStatusChange}
                 onHandover={handleHandover}
                 onDelete={handleDeleteTask}
-                canDelete={isSupervisor}
+                canDelete={isAdmin}
+                isAssignee={task.assignee === currentUserName}
               />
             ))
           )}

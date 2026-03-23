@@ -17,6 +17,7 @@ interface TaskCardProps {
   onHandover: (taskId: string) => void;
   onDelete?: (taskId: string) => void;
   canDelete?: boolean;
+  isAssignee?: boolean;
 }
 
 const STATUS_CONFIG: Record<TaskStatus, { label: string; borderClass: string; bgClass: string; icon: typeof Clock }> = {
@@ -45,7 +46,7 @@ const NEXT_STATUS: Partial<Record<TaskStatus, { status: TaskStatus; label: strin
   in_progress: { status: "done", label: "Marcar como Concluído" },
 };
 
-export function TaskCard({ task, onStatusChange, onHandover, onDelete, canDelete }: TaskCardProps) {
+export function TaskCard({ task, onStatusChange, onHandover, onDelete, canDelete, isAssignee }: TaskCardProps) {
   const config = STATUS_CONFIG[task.status];
   const next = NEXT_STATUS[task.status];
   const StatusIcon = config.icon;
@@ -88,32 +89,34 @@ export function TaskCard({ task, onStatusChange, onHandover, onDelete, canDelete
           Responsável: <span className="text-secondary">{task.assignee}</span>
         </p>
 
-        {/* Actions - always visible */}
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
-          {next && (
-            <button
-              onClick={() => onStatusChange(task.id, next.status)}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-bold transition-colors ${
-                next.status === "done"
-                  ? "bg-success text-success-foreground hover:opacity-90"
-                  : "bg-primary text-primary-foreground hover:opacity-90"
-              }`}
-            >
-              <ArrowRight className="h-4 w-4" />
-              {next.label}
-            </button>
-          )}
+        {/* Actions - only for assigned user */}
+        {isAssignee && (
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+            {next && (
+              <button
+                onClick={() => onStatusChange(task.id, next.status)}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-bold transition-colors ${
+                  next.status === "done"
+                    ? "bg-success text-success-foreground hover:opacity-90"
+                    : "bg-primary text-primary-foreground hover:opacity-90"
+                }`}
+              >
+                <ArrowRight className="h-4 w-4" />
+                {next.label}
+              </button>
+            )}
 
-          {task.status === "in_progress" && (
-            <button
-              onClick={() => onHandover(task.id)}
-              className="flex-1 flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-bold bg-secondary text-secondary-foreground hover:opacity-90 transition-colors"
-            >
-              <UserPlus className="h-4 w-4" />
-              Finalizar e Passar para...
-            </button>
-          )}
-        </div>
+            {task.status === "in_progress" && (
+              <button
+                onClick={() => onHandover(task.id)}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-bold bg-secondary text-secondary-foreground hover:opacity-90 transition-colors"
+              >
+                <UserPlus className="h-4 w-4" />
+                Finalizar e Passar para...
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
