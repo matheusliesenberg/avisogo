@@ -23,9 +23,22 @@ interface UserProfile {
   email: string;
   cargo: string;
   cargo_custom: string | null;
+  cpf: string | null;
+  phone: string | null;
+  birth_date: string | null;
+  avatar_url: string | null;
   created_at: string;
   is_admin?: boolean;
 }
+
+const CARGOS = [
+  "Operador de Produção",
+  "Administração",
+  "Logística",
+  "Supervisor",
+  "Segurança",
+  "Outro",
+];
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -37,7 +50,15 @@ export default function Admin() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [editForm, setEditForm] = useState({ display_name: "", cargo: "", cargo_custom: "" });
+  const [editForm, setEditForm] = useState({
+    display_name: "",
+    cargo: "",
+    cargo_custom: "",
+    cpf: "",
+    phone: "",
+    birth_date: "",
+    email: "",
+  });
   const [savingEdit, setSavingEdit] = useState(false);
 
   const filteredUsers = users.filter((u) => {
@@ -66,7 +87,6 @@ export default function Admin() {
       return;
     }
 
-    // Check admin status for each user
     const usersWithRoles = await Promise.all(
       profiles.map(async (p) => {
         const { data: isAdminUser } = await supabase.rpc("has_role", {
@@ -93,6 +113,10 @@ export default function Admin() {
       display_name: u.display_name || "",
       cargo: u.cargo || "",
       cargo_custom: u.cargo_custom || "",
+      cpf: u.cpf || "",
+      phone: u.phone || "",
+      birth_date: u.birth_date || "",
+      email: u.email || "",
     });
   };
 
@@ -106,13 +130,26 @@ export default function Admin() {
           display_name: editForm.display_name.trim(),
           cargo: editForm.cargo,
           cargo_custom: editForm.cargo_custom.trim() || null,
+          cpf: editForm.cpf.trim() || null,
+          phone: editForm.phone.trim() || null,
+          birth_date: editForm.birth_date || null,
+          email: editForm.email.trim(),
         })
         .eq("user_id", editingUser.user_id);
       if (error) throw error;
       setUsers((prev) =>
         prev.map((u) =>
           u.user_id === editingUser.user_id
-            ? { ...u, display_name: editForm.display_name.trim(), cargo: editForm.cargo, cargo_custom: editForm.cargo_custom.trim() || null }
+            ? {
+                ...u,
+                display_name: editForm.display_name.trim(),
+                cargo: editForm.cargo,
+                cargo_custom: editForm.cargo_custom.trim() || null,
+                cpf: editForm.cpf.trim() || null,
+                phone: editForm.phone.trim() || null,
+                birth_date: editForm.birth_date || null,
+                email: editForm.email.trim(),
+              }
             : u
         )
       );
@@ -129,43 +166,31 @@ export default function Admin() {
     setTogglingId(targetUserId);
     try {
       if (currentlyAdmin) {
-        // Demote: delete admin role
         const { error } = await supabase
           .from("user_roles")
           .delete()
           .eq("user_id", targetUserId)
           .eq("role", "admin");
-
         if (error) throw error;
-
-        // Ensure they have 'user' role
         await supabase.from("user_roles").upsert(
           { user_id: targetUserId, role: "user" as const },
           { onConflict: "user_id,role" }
         );
-
         toast({ title: `"${displayName}" rebaixado para usuário comum` });
       } else {
-        // Promote: add admin role
         await supabase.from("user_roles").insert({
           user_id: targetUserId,
           role: "admin" as const,
         });
-
         toast({ title: `"${displayName}" promovido a administrador` });
       }
-
       setUsers((prev) =>
         prev.map((u) =>
           u.user_id === targetUserId ? { ...u, is_admin: !currentlyAdmin } : u
         )
       );
     } catch (err: any) {
-      toast({
-        title: "Erro ao alterar permissão",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao alterar permissão", description: err.message, variant: "destructive" });
     } finally {
       setTogglingId(null);
     }
@@ -177,23 +202,14 @@ export default function Admin() {
       const { data, error } = await supabase.functions.invoke("delete-user", {
         body: { user_id: targetUserId },
       });
-
       if (error || data?.error) {
-        toast({
-          title: "Erro ao excluir",
-          description: data?.error || error?.message || "Erro desconhecido",
-          variant: "destructive",
-        });
+        toast({ title: "Erro ao excluir", description: data?.error || error?.message || "Erro desconhecido", variant: "destructive" });
       } else {
         toast({ title: "Colaborador excluído com sucesso" });
         setUsers((prev) => prev.filter((u) => u.user_id !== targetUserId));
       }
     } catch (err: any) {
-      toast({
-        title: "Erro ao excluir",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" });
     } finally {
       setDeletingId(null);
     }
@@ -229,9 +245,7 @@ export default function Admin() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-card rounded-xl border border-border p-5 text-center">
             <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-heading font-bold text-foreground">
-              {users.length}
-            </p>
+            <p className="text-2xl font-heading font-bold text-foreground">{users.length}</p>
             <p className="text-sm text-muted-foreground">Colaboradores</p>
           </div>
           <div className="bg-card rounded-xl border border-border p-5 text-center">
@@ -275,10 +289,15 @@ export default function Admin() {
                 key={u.id}
                 className="bg-card rounded-xl border border-border p-4 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                  <span className="text-lg font-bold text-secondary-foreground">
-                    {u.display_name?.[0]?.toUpperCase() || "?"}
-                  </span>
+                {/* Avatar */}
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
+                  {u.avatar_url ? (
+                    <img src={u.avatar_url} alt={u.display_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-bold text-secondary-foreground">
+                      {u.display_name?.[0]?.toUpperCase() || "?"}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -292,16 +311,13 @@ export default function Admin() {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {u.email}
-                  </p>
+                  <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                   <p className="text-xs text-secondary font-bold">
                     {u.cargo_custom || u.cargo || "Sem cargo"}
                   </p>
                 </div>
                 {u.user_id !== user?.id && (
                   <div className="flex items-center gap-1 shrink-0">
-                    {/* Edit button */}
                     <button
                       onClick={() => handleStartEdit(u)}
                       className="rounded-lg p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
@@ -310,7 +326,6 @@ export default function Admin() {
                       <Pencil className="h-5 w-5" />
                     </button>
 
-                    {/* Toggle admin - hidden for protected admin */}
                     {!isProtectedAdmin(u.email) && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -323,11 +338,7 @@ export default function Admin() {
                             }`}
                             title={u.is_admin ? "Rebaixar para usuário" : "Promover a admin"}
                           >
-                            {u.is_admin ? (
-                              <ShieldOff className="h-5 w-5" />
-                            ) : (
-                              <ShieldCheck className="h-5 w-5" />
-                            )}
+                            {u.is_admin ? <ShieldOff className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
                           </button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -338,14 +349,12 @@ export default function Admin() {
                             <AlertDialogDescription>
                               {u.is_admin
                                 ? `Deseja remover os privilégios de administrador de "${u.display_name}"?`
-                                : `Deseja promover "${u.display_name}" a administrador? Ele terá acesso total ao painel.`}
+                                : `Deseja promover "${u.display_name}" a administrador?`}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleToggleAdmin(u.user_id, u.display_name, !!u.is_admin)}
-                            >
+                            <AlertDialogAction onClick={() => handleToggleAdmin(u.user_id, u.display_name, !!u.is_admin)}>
                               Confirmar
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -353,7 +362,6 @@ export default function Admin() {
                       </AlertDialog>
                     )}
 
-                    {/* Delete - hidden for protected admin */}
                     {!isProtectedAdmin(u.email) && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -395,8 +403,8 @@ export default function Admin() {
       {/* Edit User Modal */}
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-foreground/40">
-          <div className="w-full max-w-lg bg-card rounded-t-2xl sm:rounded-2xl shadow-xl animate-in slide-in-from-bottom-4">
-            <div className="flex items-center justify-between border-b border-border p-4">
+          <div className="w-full max-w-lg bg-card rounded-t-2xl sm:rounded-2xl shadow-xl animate-in slide-in-from-bottom-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border p-4 sticky top-0 bg-card z-10">
               <h2 className="font-heading font-bold text-lg text-foreground">
                 Editar Colaborador
               </h2>
@@ -405,6 +413,13 @@ export default function Admin() {
               </button>
             </div>
             <div className="p-4 space-y-4">
+              {/* Avatar preview (read-only) */}
+              {editingUser.avatar_url && (
+                <div className="flex justify-center">
+                  <img src={editingUser.avatar_url} alt="Avatar" className="w-20 h-20 rounded-full object-cover border-2 border-border" />
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="block text-sm font-bold text-foreground">Nome</label>
                 <input
@@ -414,6 +429,53 @@ export default function Admin() {
                   className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
+
+              <div className="space-y-1">
+                <label className="block text-sm font-bold text-foreground">E-mail</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-sm font-bold text-foreground">CPF</label>
+                <input
+                  type="text"
+                  value={editForm.cpf}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                    setEditForm((f) => ({ ...f, cpf: digits }));
+                  }}
+                  placeholder="00000000000"
+                  maxLength={11}
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-sm font-bold text-foreground">Telefone</label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="(00) 00000-0000"
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-sm font-bold text-foreground">Data de Nascimento</label>
+                <input
+                  type="date"
+                  value={editForm.birth_date}
+                  onChange={(e) => setEditForm((f) => ({ ...f, birth_date: e.target.value }))}
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
               <div className="space-y-1">
                 <label className="block text-sm font-bold text-foreground">Cargo</label>
                 <select
@@ -422,12 +484,9 @@ export default function Admin() {
                   className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Selecione</option>
-                  <option value="Operador de Produção">Operador de Produção</option>
-                  <option value="Administração">Administração</option>
-                  <option value="Logística">Logística</option>
-                  <option value="Supervisor">Supervisor</option>
-                  <option value="Segurança">Segurança</option>
-                  <option value="Outro">Outro</option>
+                  {CARGOS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
               {editForm.cargo === "Outro" && (
