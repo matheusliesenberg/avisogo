@@ -37,8 +37,12 @@ export default function Auth() {
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!emailPrefix.trim()) errs.email = "E-mail é obrigatório";
-    const pwdError = validatePassword(password);
-    if (pwdError) errs.password = pwdError;
+    if (isLogin) {
+      if (!password) errs.password = "Senha é obrigatória";
+    } else {
+      const pwdError = validatePassword(password);
+      if (pwdError) errs.password = pwdError;
+    }
     if (!isLogin) {
       if (!displayName.trim()) errs.displayName = "Nome é obrigatório";
       if (!cargo) errs.cargo = "Selecione um cargo";
