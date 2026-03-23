@@ -16,7 +16,7 @@ const CARGOS = [
 export default function Auth() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
+  const [emailPrefix, setEmailPrefix] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState("");
@@ -25,13 +25,20 @@ export default function Auth() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const email = emailPrefix.trim() ? `${emailPrefix.trim()}@gmail.com` : "";
+
+  const validatePassword = (pwd: string): string | null => {
+    if (pwd.length < 6) return "Mínimo de 6 caracteres";
+    if (!/[a-zA-Z]/.test(pwd)) return "Deve conter pelo menos 1 letra";
+    if (!/[0-9]/.test(pwd)) return "Deve conter pelo menos 1 número";
+    return null;
+  };
+
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!email.trim()) errs.email = "E-mail é obrigatório";
-    else if (!email.endsWith("@gmail.com"))
-      errs.email = "Somente e-mails @gmail.com são permitidos";
-    if (!password || password.length < 6)
-      errs.password = "Mínimo de 6 caracteres";
+    if (!emailPrefix.trim()) errs.email = "E-mail é obrigatório";
+    const pwdError = validatePassword(password);
+    if (pwdError) errs.password = pwdError;
     if (!isLogin) {
       if (!displayName.trim()) errs.displayName = "Nome é obrigatório";
       if (!cargo) errs.cargo = "Selecione um cargo";
@@ -55,7 +62,6 @@ export default function Auth() {
         });
         if (error) throw error;
 
-        // Check if admin
         if (email === "admin@gmail.com") {
           navigate("/admin");
         } else {
@@ -75,7 +81,6 @@ export default function Auth() {
         });
         if (error) throw error;
 
-        // Update profile with cargo
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -148,15 +153,20 @@ export default function Auth() {
             <label className="block text-sm font-bold text-foreground">
               E-mail *
             </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu.email@gmail.com"
-              className={`w-full rounded-lg border px-4 py-3 text-base bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
-                errors.email ? "border-destructive" : "border-input"
-              }`}
-            />
+            <div className="flex items-stretch">
+              <input
+                type="text"
+                value={emailPrefix}
+                onChange={(e) => setEmailPrefix(e.target.value)}
+                placeholder="seu.email"
+                className={`flex-1 rounded-l-lg border border-r-0 px-4 py-3 text-base bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
+                  errors.email ? "border-destructive" : "border-input"
+                }`}
+              />
+              <span className="inline-flex items-center rounded-r-lg border border-l-0 border-input bg-muted px-3 text-sm font-bold text-muted-foreground select-none">
+                @gmail.com
+              </span>
+            </div>
             {errors.email && (
               <p className="text-xs text-destructive font-bold">
                 {errors.email}
@@ -173,7 +183,7 @@ export default function Auth() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mín. 6 caracteres (1 letra + 1 número)"
                 className={`w-full rounded-lg border px-4 py-3 pr-12 text-base bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
                   errors.password ? "border-destructive" : "border-input"
                 }`}

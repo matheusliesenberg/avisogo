@@ -57,8 +57,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Delete user from auth (cascade will remove profiles and roles)
+    // Protect admin@gmail.com from being deleted by anyone
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: targetUser } = await adminClient.auth.admin.getUserById(user_id);
+    if (targetUser?.user?.email === "admin@gmail.com") {
+      return new Response(JSON.stringify({ error: "O administrador principal não pode ser removido" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Delete user from auth (cascade will remove profiles and roles)
     const { error } = await adminClient.auth.admin.deleteUser(user_id);
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
