@@ -27,8 +27,7 @@ export default function Auth() {
 
   const email = emailPrefix.trim() ? `${emailPrefix.trim()}@gmail.com` : "";
 
-  const validatePassword = (pwd: string): string | null => {
-    if (pwd.length < 6) return "Mínimo de 6 caracteres";
+  const validatePassword = (_pwd: string): string | null => {
     return null;
   };
 
