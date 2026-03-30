@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          author: string
+          created_at: string
+          created_by: string
+          id: string
+          message: string
+          priority: string
+          title: string
+        }
+        Insert: {
+          author: string
+          created_at?: string
+          created_by: string
+          id?: string
+          message: string
+          priority?: string
+          title: string
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          message?: string
+          priority?: string
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -56,6 +86,36 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assignee: string
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          assignee?: string
+          created_at?: string
+          created_by: string
+          description?: string
+          id?: string
+          status?: string
+          title: string
+        }
+        Update: {
+          assignee?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          status?: string
+          title?: string
         }
         Relationships: []
       }
