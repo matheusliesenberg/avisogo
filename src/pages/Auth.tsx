@@ -29,8 +29,6 @@ export default function Auth() {
 
   const validatePassword = (pwd: string): string | null => {
     if (pwd.length < 6) return "Mínimo de 6 caracteres";
-    if (!/[a-zA-Z]/.test(pwd)) return "Deve conter pelo menos 1 letra";
-    if (!/[0-9]/.test(pwd)) return "Deve conter pelo menos 1 número";
     return null;
   };
 
