@@ -1,31 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, ClipboardList, LogOut, Shield } from "lucide-react";
-import { TaskCard, type Task, type TaskStatus } from "@/components/TaskCard";
+import { TaskCard, type TaskStatus } from "@/components/TaskCard";
 import { CreateTaskModal } from "@/components/CreateTaskModal";
 import { HandoverModal } from "@/components/HandoverModal";
-import { BulletinBoard, type Announcement } from "@/components/BulletinBoard";
+import { BulletinBoard } from "@/components/BulletinBoard";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-
-const INITIAL_ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: "a1",
-    title: "Parada programada - Linha 2",
-    message: "A linha 2 ficará parada para manutenção no sábado, dia 15/03. Todos os operadores devem redirecionar suas atividades para a linha 3.",
-    author: "Ana Souza",
-    createdAt: new Date().toLocaleDateString("pt-BR"),
-    priority: "urgent",
-  },
-  {
-    id: "a2",
-    title: "Novo EPI disponível",
-    message: "Os novos óculos de proteção já estão disponíveis no almoxarifado. Favor trocar o antigo até sexta-feira.",
-    author: "Maria Oliveira",
-    createdAt: new Date().toLocaleDateString("pt-BR"),
-    priority: "normal",
-  },
-];
+import { useTasks } from "@/hooks/useTasks";
+import { useAnnouncements } from "@/hooks/useAnnouncements";
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "A Fazer",
@@ -35,11 +18,11 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 
 const Index = () => {
   const navigate = useNavigate();
-  const { profile, isAdmin, signOut } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
+  const { user, profile, isAdmin, signOut } = useAuth();
+  const { tasks, createTask, updateStatus, deleteTask, handoverTask } = useTasks();
+  const { announcements, addAnnouncement, deleteAnnouncement } = useAnnouncements();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [handoverTask, setHandoverTask] = useState<Task | null>(null);
+  const [handoverTaskData, setHandoverTaskData] = useState<typeof tasks[0] | null>(null);
   const [filter, setFilter] = useState<TaskStatus | "all">("all");
   const [allUsers, setAllUsers] = useState<{ id: string; name: string; role: string }[]>([]);
 
@@ -64,59 +47,29 @@ const Index = () => {
   }, []);
 
   const handleAddAnnouncement = (title: string, message: string, priority: "normal" | "urgent") => {
-    const newAnnouncement: Announcement = {
-      id: Date.now().toString(),
-      title,
-      message,
-      author: profile?.display_name || "Usuário",
-      createdAt: new Date().toLocaleDateString("pt-BR"),
-      priority,
-    };
-    setAnnouncements((prev) => [newAnnouncement, ...prev]);
-  };
-
-  const handleDeleteAnnouncement = (id: string) => {
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+    if (!user) return;
+    addAnnouncement(title, message, priority, profile?.display_name || "Usuário", user.id);
   };
 
   const handleCreateTask = (title: string, description: string, assignee: string) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title,
-      description,
-      status: "todo",
-      assignee,
-      createdAt: new Date().toLocaleDateString("pt-BR"),
-    };
-    setTasks((prev) => [newTask, ...prev]);
+    if (!user) return;
+    createTask(title, description, assignee || profile?.display_name || "Você", user.id);
     setShowCreateModal(false);
   };
 
   const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-    );
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    updateStatus(taskId, newStatus);
   };
 
   const handleHandover = (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
-    if (task) setHandoverTask(task);
+    if (task) setHandoverTaskData(task);
   };
 
   const handleConfirmHandover = (recipientName: string) => {
-    if (!handoverTask) return;
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === handoverTask.id
-          ? { ...t, assignee: recipientName, status: "todo" as TaskStatus }
-          : t
-      )
-    );
-    setHandoverTask(null);
+    if (!handoverTaskData) return;
+    handoverTask(handoverTaskData.id, recipientName);
+    setHandoverTaskData(null);
   };
 
   const filteredTasks =
@@ -140,7 +93,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-muted">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-primary shadow-md">
         <div className="container flex items-center justify-between py-4">
           <div className="flex items-center gap-3">
@@ -192,19 +144,16 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="container py-6 space-y-6">
-        {/* Bulletin Board */}
         <BulletinBoard
           announcements={announcements}
           onAdd={handleAddAnnouncement}
-          onDelete={handleDeleteAnnouncement}
+          onDelete={deleteAnnouncement}
           isSupervisor={isSupervisor}
         />
 
         <hr className="border-border" />
 
-        {/* Create button - only for admins */}
         {isAdmin && (
           <button
             onClick={() => setShowCreateModal(true)}
@@ -215,7 +164,6 @@ const Index = () => {
           </button>
         )}
 
-        {/* Filter */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {(["all", "todo", "in_progress", "done"] as const).map((s) => (
             <button
@@ -235,7 +183,6 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Task feed */}
         <div className="space-y-4">
           {sortedTasks.length === 0 ? (
             <div className="rounded-lg bg-card p-8 text-center">
@@ -247,10 +194,13 @@ const Index = () => {
             sortedTasks.map((task) => (
               <TaskCard
                 key={task.id}
-                task={task}
+                task={{
+                  ...task,
+                  createdAt: new Date(task.created_at).toLocaleDateString("pt-BR"),
+                }}
                 onStatusChange={handleStatusChange}
                 onHandover={handleHandover}
-                onDelete={handleDeleteTask}
+                onDelete={deleteTask}
                 canDelete={isAdmin}
                 isAssignee={task.assignee === currentUserName}
               />
@@ -259,7 +209,6 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Modals */}
       {showCreateModal && (
         <CreateTaskModal
           onClose={() => setShowCreateModal(false)}
@@ -268,11 +217,14 @@ const Index = () => {
         />
       )}
 
-      {handoverTask && (
+      {handoverTaskData && (
         <HandoverModal
-          task={handoverTask}
+          task={{
+            ...handoverTaskData,
+            createdAt: new Date(handoverTaskData.created_at).toLocaleDateString("pt-BR"),
+          }}
           users={allUsers}
-          onClose={() => setHandoverTask(null)}
+          onClose={() => setHandoverTaskData(null)}
           onConfirm={handleConfirmHandover}
         />
       )}
